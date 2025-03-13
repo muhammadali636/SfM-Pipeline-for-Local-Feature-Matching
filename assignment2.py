@@ -9,9 +9,11 @@
 # https://stackoverflow.com/questions/16295551/how-to-correctly-use-cvtriangulatepoints?rq=3 - how to correctly use triangulatepoints.
 #https://www.open3d.org/docs/release/getting_started.html
 
+
 import numpy as np
 import cv2
 from utils import loadImages, readCalibrationMatrix, writePLY
+from sfm import detectFeatures, matchDescriptors
 
 def main():
     #PART 1. Image reading and preprocessing
@@ -38,7 +40,7 @@ def main():
     
     
     #Step 5: Write the final point cloud to a PLY file.
-    writePLY("mycloud.ply", pointCloud)
+    #swritePLY("mycloud.ply", pointCloud)
     #print("Saved mycloud.ply")
     #print(len(pointCloud), "points.")
 
