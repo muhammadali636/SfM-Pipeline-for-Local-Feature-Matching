@@ -4,8 +4,6 @@
 import numpy as np
 import cv2
 
-
-
 #SIFT algo to detect keypoints and get descriptors for img
 def detectFeatures( image ):
     siftDetector = cv2.SIFT_create()
@@ -34,7 +32,30 @@ def matchDescriptors(descriptorsOne,  descriptorsTwo, ratioThreshold=0.4 ):
 
 #est the relative camera pose using the essential matrix. The essential matrix approach works when camera intrinsics (K) are known. 
 #Estimate E using cv2.findEssentialMat and cv2.recoverPose may be helpful. This step recovers the initial baseline between your first two images.
+def estimatePose(keypointsOne, keypointsTwo,matchedPairs, cameraMatrix):
+    pointsOne = np.float32( [ keypointsOne[match[0]].pt for  match in   matchedPairs ])
+    pointsTwo = np.float32([keypointsTwo[match[1]].pt for match in matchedPairs ])
+    essentialMatrix, _ =cv2.findEssentialMat( pointsOne,pointsTwo,cameraMatrix, method=cv2.RANSAC,  prob = 0.999, threshold =1.0)
+    _, rotationMatrix,  translationVector,  _ =cv2.recoverPose(essentialMatrix,pointsOne,  pointsTwo, cameraMatrix)
+    return rotationMatrix,translationVector, pointsOne, pointsTwo
 
-#Triangulation: 3D points from two images (2d) given camera poses points. 2d -> 3d 
+#Triangulation: 3D points from two images (2d) given camera poses points. 2d -> 3d this is sick
+def triangulatePoints(rotationMatrixOne,translationVectorOne,rotationMatrixTwo, translationVectorTwo,   points2DOne, points2DTwo, cameraMatrix):
+    #Keep track of these 3D points and their corresponding 2D features.
+    projectionMatrixOne =  np.dot( cameraMatrix,np.hstack((rotationMatrixOne,   translationVectorOne))) #NP.DOT FOR MATRIX MULTIPLYING
+    projectionMatrixTwo = np.dot(cameraMatrix, np.hstack((rotationMatrixTwo,translationVectorTwo )))
+    points2DOneTranspose =  points2DOne.T   
+    points2DTwoTranspose = points2DTwo.T 
+    points4DHomogeneous   = cv2.triangulatePoints(projectionMatrixOne,projectionMatrixTwo,   points2DOneTranspose, points2DTwoTranspose) #triangulate!!! test out further. cv documention unclear.
+    points3D = ( points4DHomogeneous[:3]/points4DHomogeneous[3]).T  
+    return points3D
 
 #PNP: solve for the camera pose of new image using 2D-3D correspondence
+def solvePNP( pointsThreeD, pointsTwoD,cameraMatrix):
+    objectPoints = np.array( pointsThreeD,dtype=np.float32)
+    imagePoints = np.array(pointsTwoD, dtype=np.float32 )
+    _,rotationVector,translationVector,_ = cv2.solvePnPRansac( objectPoints   ,imagePoints,cameraMatrix, None) 
+    rotationMatrix, _  = cv2.Rodrigues( rotationVector)
+    return rotationMatrix   ,  translationVector
+
+
